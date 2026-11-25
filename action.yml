@@ -1,0 +1,74 @@
+name: DialCatz API tests
+description: Run DialCatz, Postman or OpenAPI collections with their tests, with a summary on the run and an HTML or JUnit report.
+author: Catzoid
+branding:
+  icon: check-circle
+  color: green
+inputs:
+  path:
+    description: A DialCatz workspace folder, a DialCatz or Postman collection file, or an OpenAPI file.
+    required: true
+  collection:
+    description: Only this collection of a workspace folder.
+  folder:
+    description: Only the requests under this folder.
+  vars:
+    description: Variables, one name=value per line. Environment variables of the same name work too.
+  env-file:
+    description: A file of NAME=value lines.
+  data:
+    description: A CSV or JSON file; the collection runs once per row.
+  spec:
+    description: An OpenAPI file every response is checked against.
+  retries:
+    description: Try a failed request again, up to this many times.
+  bail:
+    description: Stop at the first failure (true).
+  report:
+    description: Where to write an HTML report.
+  details:
+    description: Put headers and bodies into the HTML report (true). Credentials are hidden.
+  junit:
+    description: Where to write a JUnit XML report.
+  args:
+    description: More options of dialcatz run, one per line (for example --timeout=60).
+  working-directory:
+    description: Where to run.
+    default: .
+  version:
+    description: The dialcatz version on npm.
+    default: '1'
+outputs:
+  passed:
+    description: true when every request passed.
+    value: ${{ steps.run.outputs.passed }}
+  requests:
+    description: How many requests ran.
+    value: ${{ steps.run.outputs.requests }}
+  failed:
+    description: How many failed.
+    value: ${{ steps.run.outputs.failed }}
+runs:
+  using: composite
+  steps:
+    - id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      # Inputs go in as environment variables, never into the script's text.
+      env:
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_COLLECTION: ${{ inputs.collection }}
+        INPUT_FOLDER: ${{ inputs.folder }}
+        INPUT_VARS: ${{ inputs.vars }}
+        INPUT_ENV_FILE: ${{ inputs.env-file }}
+        INPUT_DATA: ${{ inputs.data }}
+        INPUT_SPEC: ${{ inputs.spec }}
+        INPUT_RETRIES: ${{ inputs.retries }}
+        INPUT_BAIL: ${{ inputs.bail }}
+        INPUT_REPORT: ${{ inputs.report }}
+        INPUT_DETAILS: ${{ inputs.details }}
+        INPUT_JUNIT: ${{ inputs.junit }}
+        INPUT_ARGS: ${{ inputs.args }}
+        INPUT_VERSION: ${{ inputs.version }}
+        ACTION_DIR: ${{ github.action_path }}
+      run: bash "$ACTION_DIR/run.sh"

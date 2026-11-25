@@ -1,0 +1,58 @@
+name: Test
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The dialcatz version to test with
+        default: '1'
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - shell: bash
+        run: |
+          node example/server.mjs &
+          for i in $(seq 1 30); do curl -sf http://localhost:4010/health && break; sleep 1; done
+      - id: good
+        uses: ./
+        with:
+          path: example/api.postman_collection.json
+          vars: |
+            baseUrl=http://localhost:4010
+          report: report.html
+          details: true
+          version: ${{ inputs.version || '1' }}
+        env:
+          apiToken: example-token
+      - id: bad
+        uses: ./
+        continue-on-error: true
+        with:
+          path: example/api.postman_collection.json
+          vars: |
+            baseUrl=http://localhost:4010
+            apiToken=wrong-token
+          version: ${{ inputs.version || '1' }}
+      - name: What they answered
+        shell: bash
+        env:
+          GOOD: ${{ steps.good.outputs.passed }} ${{ steps.good.outputs.requests }} ${{ steps.good.outputs.failed }}
+          BAD: ${{ steps.bad.outputs.passed }} ${{ steps.bad.outputs.requests }} ${{ steps.bad.outputs.failed }} ${{ steps.bad.outcome }}
+        run: |
+          test "$GOOD" = "true 2 0"
+          test "$BAD" = "false 2 1 failure"
+          test -s report.html
+          ! grep -q example-token report.html
